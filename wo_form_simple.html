@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WO Throughput (Simple)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 14px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+    label { font-size: .95rem; color: #111827; display:block; margin-top:8px }
+    input { width: 100%; font-size: 1rem; padding: 10px; border-radius: 10px; border: 1px solid #d1d5db; }
+    input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .2); }
+    button { font-size: 1rem; padding: 10px 14px; border-radius: 10px; border: 1px solid #111827; background:#111827; color:white; cursor:pointer; margin-top:10px }
+    .muted { color:#6b7280; font-size:.9rem }
+    .ok { color:#065f46 }
+    .err { color:#991b1b }
+  </style>
+</head>
+<body>
+  <h2>📋 Work Order Throughput (Simple)</h2>
+  <p class="muted">Use a <b>barcode keyboard app</b> on your phone or type manually. This page works on LAN without HTTPS and posts to <code>/submit</code>.</p>
+
+  <div class="card">
+    <label>Work Order ID</label>
+    <input id="wo" placeholder="WO-12345" />
+    <label>Planned Qty (optional)</label>
+    <input id="planned" type="number" placeholder="100" />
+    <label>Operation (optional)</label>
+    <input id="op" placeholder="WELD / PAINT" />
+    <label>Operator (optional)</label>
+    <input id="operator" placeholder="Ali / Station 3" />
+    <label>Station (optional)</label>
+    <input id="station" placeholder="Line A / Cell 2" />
+    <label>Actual Completed</label>
+    <input id="actual" type="number" inputmode="numeric" placeholder="90" />
+    <button id="btnSubmit">Submit</button>
+    <div id="status" class="muted" style="margin-top:8px"></div>
+  </div>
+
+<script>
+function setStatus(msg, isErr=false) {
+  const el = document.getElementById("status");
+  el.className = isErr ? "err" : "ok";
+  el.textContent = msg;
+  setTimeout(()=>{ el.textContent = ""; el.className = "muted"; }, 5000);
+}
+
+async function submit() {
+  const payload = {
+    work_order_id: document.getElementById("wo").value.trim(),
+    planned_qty: document.getElementById("planned").value.trim(),
+    operation: document.getElementById("op").value.trim(),
+    actual_qty: document.getElementById("actual").value.trim(),
+    operator_name: document.getElementById("operator").value.trim(),
+    station_id: document.getElementById("station").value.trim(),
+    extra_json: null
+  };
+  if (!payload.work_order_id) { setStatus("Work Order is required", true); return; }
+  if (!payload.actual_qty) { setStatus("Actual quantity is required", true); return; }
+
+  try {
+    const resp = await fetch("/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      setStatus("Saved ✔ (" + data.ts_utc + ")");
+      document.getElementById("actual").value = "";
+    } else {
+      setStatus("Save failed: " + (data.error || "unknown"), true);
+    }
+  } catch (e) {
+    setStatus("Network error: " + e, true);
+  }
+}
+
+// Prefill from URL params (?wo=&planned=&op=)
+(function prefill(){
+  const p = new URLSearchParams(window.location.search);
+  if (p.has("wo")) document.getElementById("wo").value = p.get("wo");
+  if (p.has("planned")) document.getElementById("planned").value = p.get("planned");
+  if (p.has("op")) document.getElementById("op").value = p.get("op");
+})();
+
+document.getElementById("btnSubmit").addEventListener("click", submit);
+</script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QR Generator for Work Orders → URL</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:14px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    input,button,textarea{font-size:1rem;padding:10px;border-radius:10px;border:1px solid #d1d5db}
+    button{background:#111827;color:white;cursor:pointer}
+    .card{border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+    .qr{border:1px dashed #d1d5db;border-radius:12px;padding:8px;text-align:center}
+    .muted{color:#6b7280;font-size:.9rem}
+    .small{font-size:.8rem}
+    .link{word-break:break-all}
+    .warn{background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;padding:8px 10px;border-radius:10px;margin-bottom:10px}
+    label{font-weight:600}
+  </style>
+</head>
+<body>
+  <h2>QR Labels → Open Form URL</h2>
+  <div class="warn">Put your LAN base URL below, e.g. <code>http://192.168.1.45:8000/simple</code>. Phones scan and go straight to your form.</div>
+
+  <div class="card">
+    <div class="row">
+      <div style="flex:2 1 280px">
+        <label>Base URL (points to the simple form)</label>
+        <input id="base" style="width:100%" placeholder="http://192.168.1.45:8000/simple" />
+        <div class="muted small">We will append <code>?wo=...&planned=...&op=...</code></div>
+      </div>
+      <div style="flex:1 1 220px">
+        <label>QR Size (px)</label>
+        <input id="size" type="number" value="120" />
+        <div class="muted small">80–180 recommended</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Work Orders (one per line)</label>
+    <div class="muted small" style="margin:6px 0">Formats supported:
+      <ul>
+        <li><code>WO-2025-0174</code></li>
+        <li><code>WO-2025-0174,100,WELD</code> (wo, planned, op)</li>
+      </ul>
+    </div>
+    <textarea id="lines" rows="8" style="width:100%" placeholder="WO-2025-0174,100,WELD&#10;WO-2025-0175,60,PAINT&#10;WO-2025-0176"></textarea>
+    <div style="margin-top:8px"><button id="gen">Generate QRs</button></div>
+  </div>
+
+  <div class="card">
+    <strong>Preview / Print</strong>
+    <div id="out" class="grid" style="margin-top:10px"></div>
+  </div>
+
+<script>
+function buildUrl(base, wo, planned, op){
+  const u = new URL(base);
+  const p = u.searchParams;
+  p.set("wo", wo);
+  if (planned) p.set("planned", planned);
+  if (op) p.set("op", op);
+  return u.toString();
+}
+function parseLine(s){
+  // Returns {wo, planned, op}
+  const t = s.trim();
+  if (!t) return null;
+  const parts = t.split(",").map(x=>x.trim());
+  if (parts.length===1) return {wo:parts[0], planned:"", op:""};
+  return {wo:parts[0], planned:parts[1]||"", op:parts[2]||""};
+}
+function makeCard(container, url, label, size){
+  const box = document.createElement("div");
+  box.className = "qr";
+  const qdiv = document.createElement("div");
+  const cap = document.createElement("div");
+  cap.className = "small link";
+  cap.textContent = label;
+  box.appendChild(qdiv);
+  box.appendChild(cap);
+  container.appendChild(box);
+  new QRCode(qdiv, { text: url, width: size, height: size });
+}
+
+document.getElementById("gen").addEventListener("click", ()=>{
+  const base = document.getElementById("base").value.trim();
+  const size = parseInt(document.getElementById("size").value || "120", 10);
+  if (!base) { alert("Enter Base URL first"); return; }
+  let out = document.getElementById("out");
+  out.innerHTML = "";
+  const lines = document.getElementById("lines").value.split("\n");
+  for (const line of lines){
+    const parsed = parseLine(line);
+    if (!parsed) continue;
+    const url = buildUrl(base, parsed.wo, parsed.planned, parsed.op);
+    const label = `${parsed.wo}${parsed.planned?(" • "+parsed.planned):""}${parsed.op?(" • "+parsed.op):""}`;
+    makeCard(out, url, label, size);
+  }
+});
+</script>
+</body>
+</html>
