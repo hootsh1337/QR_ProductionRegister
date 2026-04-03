@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS scans (
 """
 
 app = Flask(__name__, static_folder=APP_DIR, static_url_path="")
-
+init_db()
 def init_db():
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
@@ -102,6 +102,6 @@ def export():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
-    init_db()
+
     port = int(os.environ.get("PORT", 8000))
     app.run(host="0.0.0.0", port=port, debug=False)
