@@ -21,13 +21,15 @@ CREATE TABLE IF NOT EXISTS scans (
 """
 
 app = Flask(__name__, static_folder=APP_DIR, static_url_path="")
-init_db()
+
 def init_db():
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
     cur.execute(TABLE_SQL)
     con.commit()
     con.close()
+
+init_db()
 
 @app.after_request
 def add_cors_headers(resp):
